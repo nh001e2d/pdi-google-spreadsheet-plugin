@@ -131,7 +131,9 @@ public class GoogleSpreadsheetInputMeta extends BaseStepMeta implements StepMeta
     }
     
     public boolean isDefaultFields() {
-    	return "field".equals(inputFields[0].getName());
+    	return inputFields == null || inputFields.length == 0
+    			||  "field".equals(inputFields[0].getName())
+    			|| "".equals(inputFields[0].getName());
     }
     
     public void retrieveFields(SpreadsheetService service, String spreadsheetKey, String worksheetId) throws IOException, ServiceException {
