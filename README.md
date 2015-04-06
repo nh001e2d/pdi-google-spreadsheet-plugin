@@ -11,6 +11,11 @@ Limitations
 
 See [Google Spreadsheets API](https://developers.google.com/google-apps/spreadsheets/) for more limitations on the API.
 
+Extend functionality
+--------------------
+* Added ability to read parameters from variables.
+* Added ability to automatically read existing fields meta when it is not defined manually in the Step.
+
 Authentication
 --------------
 This plugin uses a mechanism of OAuth 2.0 called [Service Accounts](https://developers.google.com/accounts/docs/OAuth2ServiceAccount).
