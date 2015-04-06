@@ -13,6 +13,7 @@ import com.google.gdata.client.spreadsheet.FeedURLFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -30,6 +31,8 @@ public class GoogleSpreadsheet {
     private static final List<String> SCOPES = Arrays.asList("https://spreadsheets.google.com/feeds",
             "https://docs.google.com/feeds");
     private static final FeedURLFactory FEED_URL_FACTORY = FeedURLFactory.getDefault();
+    private static final String GOOGLE_SERVICE_EMAIL_DOMAIN = "@developer.gserviceaccount.com";
+	private static final String GOOGLE_CLIENT_ID_DOMAIN = ".apps.googleusercontent.com";
 
     public static String base64EncodePrivateKeyStore(KeyStore pks) throws GeneralSecurityException, IOException {
         if (pks != null && pks.containsAlias("privatekey")) {
@@ -62,6 +65,26 @@ public class GoogleSpreadsheet {
         } catch (Exception e) {
         }
         return null;
+    }
+    
+    public static String getGoogleServiceAccount(String clientId) {
+    	return (clientId != null) ? clientId.replaceAll(GOOGLE_CLIENT_ID_DOMAIN, GOOGLE_SERVICE_EMAIL_DOMAIN): "";
+    }
+    
+    public static KeyStore getKeyStore(String filename) {
+    	try {
+            java.io.File keyfile = new java.io.File(filename);
+            KeyStore pks = KeyStore.getInstance("PKCS12");
+            pks.load(new FileInputStream(keyfile), GoogleSpreadsheet.SECRET);
+            PrivateKey pk = (PrivateKey) pks.getKey("privatekey", GoogleSpreadsheet.SECRET);
+            if (pk != null) {
+                return pks;
+            } else {
+                throw new Exception();
+            }
+        } catch (Exception err) {
+            return null;
+        }
     }
 
     public static String getAccessToken(String email, KeyStore pks) throws Exception {

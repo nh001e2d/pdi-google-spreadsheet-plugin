@@ -1,5 +1,7 @@
 package org.ccci.gto.pdi.trans.steps.googlespreadsheet;
 
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.widgets.TableItem;
 import org.pentaho.di.core.CheckResult;
 import org.pentaho.di.core.CheckResultInterface;
 import org.pentaho.di.core.Const;
@@ -25,6 +27,15 @@ import org.pentaho.di.trans.steps.textfileinput.TextFileInputField;
 import org.pentaho.metastore.api.IMetaStore;
 import org.w3c.dom.Node;
 
+import com.google.gdata.client.Query;
+import com.google.gdata.client.spreadsheet.FeedURLFactory;
+import com.google.gdata.client.spreadsheet.SpreadsheetService;
+import com.google.gdata.data.spreadsheet.ListEntry;
+import com.google.gdata.data.spreadsheet.ListFeed;
+import com.google.gdata.util.ServiceException;
+
+import java.io.IOException;
+import java.net.MalformedURLException;
 import java.security.KeyStore;
 import java.util.List;
 
@@ -34,6 +45,7 @@ public class GoogleSpreadsheetInputMeta extends BaseStepMeta implements StepMeta
     private static Class<?> PKG = GoogleSpreadsheetInputMeta.class;
 
     private String serviceEmail;
+    private String pkcsFilename;
     private KeyStore privateKeyStore;
     private String spreadsheetKey;
     private String worksheetId;
@@ -47,6 +59,7 @@ public class GoogleSpreadsheetInputMeta extends BaseStepMeta implements StepMeta
     @Override
     public void setDefault() {
         this.serviceEmail = "";
+        this.pkcsFilename = "";
         this.spreadsheetKey = "";
         this.worksheetId = "od6";
         this.privateKeyStore = null;
@@ -101,18 +114,49 @@ public class GoogleSpreadsheetInputMeta extends BaseStepMeta implements StepMeta
         this.worksheetId = id;
     }
 
-    public TextFileInputField[] getInputFields() {
+    public String getPkcsFilename() {
+		return pkcsFilename;
+	}
+
+	public void setPkcsFilename(String pkcsFilename) {
+		this.pkcsFilename = pkcsFilename;
+	}
+
+	public TextFileInputField[] getInputFields() {
         return inputFields;
     }
 
     public void setInputFields(TextFileInputField[] inputFields) {
         this.inputFields = inputFields;
     }
+    
+    public boolean isDefaultFields() {
+    	return "field".equals(inputFields[0].getName());
+    }
+    
+    public void retrieveFields(SpreadsheetService service, String spreadsheetKey, String worksheetId) throws IOException, ServiceException {
+    	Query feedQuery = new Query(FeedURLFactory.getDefault().getListFeedUrl(spreadsheetKey, worksheetId, "private", "full"));
+        feedQuery.setMaxResults(1);
+        ListFeed feed = service.getFeed(feedQuery, ListFeed.class);
+        List<ListEntry> rows = feed.getEntries();
+        ListEntry row = rows.get(0);
+        
+        allocate(row.getCustomElements().getTags().size());
+
+        int index = 0;
+        for (String tag : row.getCustomElements().getTags()) {
+            inputFields[index] = new TextFileInputField();
+            inputFields[index].setName(Const.trim(tag));
+            inputFields[index].setType(ValueMetaInterface.TYPE_STRING);
+            index++;
+        }
+    }
 
     @Override
     public Object clone() {
         GoogleSpreadsheetInputMeta retval = (GoogleSpreadsheetInputMeta) super.clone();
         retval.setServiceEmail(this.serviceEmail);
+        retval.setPkcsFilename(this.pkcsFilename);
         retval.setPrivateKeyStore(this.privateKeyStore);
         retval.setSpreadsheetKey(this.spreadsheetKey);
         retval.setWorksheetId(this.worksheetId);
@@ -126,6 +170,7 @@ public class GoogleSpreadsheetInputMeta extends BaseStepMeta implements StepMeta
             xml.append(XMLHandler.addTagValue("serviceEmail", this.serviceEmail));
             xml.append(XMLHandler.addTagValue("spreadsheetKey", this.spreadsheetKey));
             xml.append(XMLHandler.addTagValue("worksheetId", this.worksheetId));
+            xml.append(XMLHandler.addTagValue("pkcs_filename", this.pkcsFilename));
             xml.append(XMLHandler.openTag("privateKeyStore"));
             xml.append(XMLHandler.buildCDATA(GoogleSpreadsheet.base64EncodePrivateKeyStore(this.privateKeyStore)));
             xml.append(XMLHandler.closeTag("privateKeyStore"));
@@ -158,6 +203,7 @@ public class GoogleSpreadsheetInputMeta extends BaseStepMeta implements StepMeta
             this.serviceEmail = XMLHandler.getTagValue(stepnode, "serviceEmail");
             this.spreadsheetKey = XMLHandler.getTagValue(stepnode, "spreadsheetKey");
             this.worksheetId = XMLHandler.getTagValue(stepnode, "worksheetId");
+            this.pkcsFilename = XMLHandler.getTagValue(stepnode, "pkcs_filename");
             this.privateKeyStore = GoogleSpreadsheet.base64DecodePrivateKeyStore(XMLHandler.getTagValue(stepnode, "privateKeyStore"));
 
             Node fields = XMLHandler.getSubNode(stepnode, "fields");
@@ -192,6 +238,7 @@ public class GoogleSpreadsheetInputMeta extends BaseStepMeta implements StepMeta
             this.serviceEmail = rep.getStepAttributeString(id_step, "serviceEmail");
             this.spreadsheetKey = rep.getStepAttributeString(id_step, "spreadsheetKey");
             this.worksheetId = rep.getStepAttributeString(id_step, "worksheetId");
+            this.pkcsFilename = rep.getStepAttributeString(id_step, "pkcs_filename");
             this.privateKeyStore = GoogleSpreadsheet.base64DecodePrivateKeyStore(rep.getStepAttributeString(id_step, "privateKeyStore"));
 
             int nrfields = rep.countNrStepAttributes(id_step, "field_name");
@@ -222,6 +269,7 @@ public class GoogleSpreadsheetInputMeta extends BaseStepMeta implements StepMeta
             rep.saveStepAttribute(id_transformation, id_step, "serviceEmail", this.serviceEmail);
             rep.saveStepAttribute(id_transformation, id_step, "spreadsheetKey", this.spreadsheetKey);
             rep.saveStepAttribute(id_transformation, id_step, "worksheetId", this.worksheetId);
+            rep.saveStepAttribute(id_transformation, id_step, "pkcs_filename", this.pkcsFilename);
             rep.saveStepAttribute(id_transformation, id_step, "privateKeyStore", GoogleSpreadsheet.base64EncodePrivateKeyStore(this.privateKeyStore));
 
             for (int i = 0; i < inputFields.length; i++) {
