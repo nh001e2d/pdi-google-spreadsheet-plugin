@@ -12,6 +12,7 @@ import com.google.gdata.data.spreadsheet.WorksheetFeed;
 import com.google.gdata.model.atom.Link;
 import com.google.gdata.model.batch.BatchUtils;
 import com.google.gdata.util.ServiceException;
+
 import org.ccci.gto.pdi.trans.steps.googlespreadsheet.spreadsheet.Spreadsheet;
 import org.ccci.gto.pdi.trans.steps.googlespreadsheet.spreadsheet.SpreadsheetCell;
 import org.ccci.gto.pdi.trans.steps.googlespreadsheet.spreadsheet.SpreadsheetRow;
@@ -24,6 +25,7 @@ import org.pentaho.di.trans.step.*;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.security.KeyStore;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +46,16 @@ class GoogleSpreadsheetOutput extends BaseStep implements StepInterface {
 
         if (super.init(smi, sdi)) {
             try {
-                data.accessToken = GoogleSpreadsheet.getAccessToken(meta.getServiceEmail(), meta.getPrivateKeyStore());
+            	String realServiceEmail = environmentSubstitute(meta.getServiceEmail());
+            	String realPkcsFilename = environmentSubstitute(meta.getPkcsFilename());
+            	
+            	KeyStore privateKeystore = meta.getPrivateKeyStore();            	
+            	if (privateKeystore == null) {
+            		privateKeystore = GoogleSpreadsheet.getKeyStore(realPkcsFilename);
+            		meta.setPrivateKeyStore(privateKeystore);
+            	}
+            	
+                data.accessToken = GoogleSpreadsheet.getAccessToken(realServiceEmail, privateKeystore);
                 if (data.accessToken == null) {
                     logError("Unable to get access token.");
                     setErrors(1L);
@@ -54,8 +65,8 @@ class GoogleSpreadsheetOutput extends BaseStep implements StepInterface {
                 data.service = new SpreadsheetService("PentahoKettleTransformStep-v1");
                 data.service.setHeader("Authorization", "Bearer " + data.accessToken);
 
-                data.spreadsheetKey = meta.getSpreadsheetKey();
-                data.worksheetId = meta.getWorksheetId();
+                data.spreadsheetKey = environmentSubstitute(meta.getSpreadsheetKey());
+                data.worksheetId = environmentSubstitute(meta.getWorksheetId());
 
                 data.worksheetFeedURL = data.urlFactory.getWorksheetFeedUrl(data.spreadsheetKey, "private", "full");
                 data.worksheetFeed = data.service.getFeed(data.worksheetFeedURL, WorksheetFeed.class);

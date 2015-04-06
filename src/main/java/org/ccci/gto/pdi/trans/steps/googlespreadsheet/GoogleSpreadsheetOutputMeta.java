@@ -31,6 +31,7 @@ public class GoogleSpreadsheetOutputMeta extends BaseStepMeta implements StepMet
     private KeyStore privateKeyStore;
     private String spreadsheetKey;
     private String worksheetId;
+    private String pkcsFilename;
 
     public GoogleSpreadsheetOutputMeta() {
         super();
@@ -41,6 +42,7 @@ public class GoogleSpreadsheetOutputMeta extends BaseStepMeta implements StepMet
         this.serviceEmail = "";
         this.spreadsheetKey = "";
         this.worksheetId = "od6";
+        this.pkcsFilename = "";
         this.privateKeyStore = null;
     }
 
@@ -81,13 +83,22 @@ public class GoogleSpreadsheetOutputMeta extends BaseStepMeta implements StepMet
         this.worksheetId = id;
     }
 
-    @Override
+    public String getPkcsFilename() {
+		return pkcsFilename;
+	}
+
+	public void setPkcsFilename(String pkcsFilename) {
+		this.pkcsFilename = pkcsFilename;
+	}
+
+	@Override
     public Object clone() {
         GoogleSpreadsheetOutputMeta retval = (GoogleSpreadsheetOutputMeta) super.clone();
         retval.setServiceEmail(this.serviceEmail);
         retval.setPrivateKeyStore(this.privateKeyStore);
         retval.setSpreadsheetKey(this.spreadsheetKey);
         retval.setWorksheetId(this.worksheetId);
+        retval.setPkcsFilename(this.pkcsFilename);
         return retval;
     }
 
@@ -98,6 +109,7 @@ public class GoogleSpreadsheetOutputMeta extends BaseStepMeta implements StepMet
             xml.append(XMLHandler.addTagValue("serviceEmail", this.serviceEmail));
             xml.append(XMLHandler.addTagValue("spreadsheetKey", this.spreadsheetKey));
             xml.append(XMLHandler.addTagValue("worksheetId", this.worksheetId));
+            xml.append(XMLHandler.addTagValue("pkcs_filename", this.pkcsFilename));
             xml.append(XMLHandler.openTag("privateKeyStore"));
             xml.append(XMLHandler.buildCDATA(GoogleSpreadsheet.base64EncodePrivateKeyStore(this.privateKeyStore)));
             xml.append(XMLHandler.closeTag("privateKeyStore"));
@@ -113,6 +125,7 @@ public class GoogleSpreadsheetOutputMeta extends BaseStepMeta implements StepMet
             this.serviceEmail = XMLHandler.getTagValue(stepnode, "serviceEmail");
             this.spreadsheetKey = XMLHandler.getTagValue(stepnode, "spreadsheetKey");
             this.worksheetId = XMLHandler.getTagValue(stepnode, "worksheetId");
+            this.pkcsFilename = XMLHandler.getTagValue(stepnode, "pkcs_filename");
             this.privateKeyStore = GoogleSpreadsheet.base64DecodePrivateKeyStore(XMLHandler.getTagValue(stepnode, "privateKeyStore"));
         } catch (Exception e) {
             throw new KettleXMLException("Unable to load step from XML", e);
@@ -125,6 +138,7 @@ public class GoogleSpreadsheetOutputMeta extends BaseStepMeta implements StepMet
             this.serviceEmail = rep.getStepAttributeString(id_step, "serviceEmail");
             this.spreadsheetKey = rep.getStepAttributeString(id_step, "spreadsheetKey");
             this.worksheetId = rep.getStepAttributeString(id_step, "worksheetId");
+            this.pkcsFilename = rep.getStepAttributeString(id_step, "pkcs_filename");
             this.privateKeyStore = GoogleSpreadsheet.base64DecodePrivateKeyStore(rep.getStepAttributeString(id_step, "privateKeyStore"));
         } catch (Exception e) {
             throw new KettleException("Unexpected error reading step information from the repository", e);
@@ -137,6 +151,7 @@ public class GoogleSpreadsheetOutputMeta extends BaseStepMeta implements StepMet
             rep.saveStepAttribute(id_transformation, id_step, "serviceEmail", this.serviceEmail);
             rep.saveStepAttribute(id_transformation, id_step, "spreadsheetKey", this.spreadsheetKey);
             rep.saveStepAttribute(id_transformation, id_step, "worksheetId", this.worksheetId);
+            rep.saveStepAttribute(id_transformation, id_step, "pkcs_filename", this.pkcsFilename);
             rep.saveStepAttribute(id_transformation, id_step, "privateKeyStore", GoogleSpreadsheet.base64EncodePrivateKeyStore(this.privateKeyStore));
         } catch (Exception e) {
             throw new KettleException("Unable to save step information to the repository for id_step=" + id_step, e);

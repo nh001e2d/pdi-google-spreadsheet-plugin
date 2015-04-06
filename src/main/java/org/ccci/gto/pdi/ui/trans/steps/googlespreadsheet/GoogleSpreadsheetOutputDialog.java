@@ -6,6 +6,7 @@ import com.google.gdata.data.spreadsheet.SpreadsheetEntry;
 import com.google.gdata.data.spreadsheet.SpreadsheetFeed;
 import com.google.gdata.data.spreadsheet.WorksheetEntry;
 import com.google.gdata.data.spreadsheet.WorksheetFeed;
+
 import org.ccci.gto.pdi.trans.steps.googlespreadsheet.GoogleSpreadsheet;
 import org.ccci.gto.pdi.trans.steps.googlespreadsheet.GoogleSpreadsheetOutputMeta;
 import org.eclipse.swt.SWT;
@@ -24,9 +25,11 @@ import org.pentaho.di.trans.step.BaseStepMeta;
 import org.pentaho.di.trans.step.StepDialogInterface;
 import org.pentaho.di.ui.core.dialog.EnterSelectionDialog;
 import org.pentaho.di.ui.core.dialog.ErrorDialog;
+import org.pentaho.di.ui.core.widget.TextVar;
 import org.pentaho.di.ui.trans.step.BaseStepDialog;
 
 import javax.security.auth.x500.X500Principal;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.security.KeyStore;
@@ -43,10 +46,11 @@ public class GoogleSpreadsheetOutputDialog extends BaseStepDialog implements Ste
 
     private Label privateKeyInfo;
     private Label testServiceAccountInfo;
-    private Text serviceEmail;
+    private TextVar serviceEmail;
+    private TextVar pkcsFilename;
     private KeyStore privateKeyStore;
-    private Text spreadsheetKey;
-    private Text worksheetId;
+    private TextVar spreadsheetKey;
+    private TextVar worksheetId;
 
     public GoogleSpreadsheetOutputDialog(Shell parent, Object in, TransMeta meta, String name) {
         super( parent, (BaseStepMeta) in, meta, name );
@@ -130,7 +134,7 @@ public class GoogleSpreadsheetOutputDialog extends BaseStepDialog implements Ste
         serviceEmailLabel.setLayoutData( serviceEmailLabelData );
 
         // serviceEmail - Text
-        serviceEmail = new Text( serviceAccountComposite, SWT.SINGLE | SWT.LEFT | SWT.BORDER );
+        serviceEmail = new TextVar(transMeta, serviceAccountComposite, SWT.SINGLE | SWT.LEFT | SWT.BORDER );
         props.setLook( serviceEmail );
         serviceEmail.addModifyListener( modifiedListener );
         FormData serviceEmailData = new FormData();
@@ -149,22 +153,30 @@ public class GoogleSpreadsheetOutputDialog extends BaseStepDialog implements Ste
         privateKeyLabelForm.right = new FormAttachment( middle, -margin );
         privateKeyLabel.setLayoutData( privateKeyLabelForm );
 
-        privateKeyInfo = new Label( serviceAccountComposite, SWT.CENTER );
-        props.setLook( privateKeyInfo );
-        FormData privateKeyInfoData = new FormData();
-        privateKeyInfoData.top = new FormAttachment( serviceEmail, margin );
-        privateKeyInfoData.left = new FormAttachment( middle, 0 );
-        privateKeyInfoData.right = new FormAttachment( 100, 0 );
-        privateKeyInfo.setLayoutData( privateKeyInfoData );
-
         // privateKey - Button
         Button privateKeyButton = new Button( serviceAccountComposite, SWT.PUSH | SWT.CENTER );
         props.setLook( privateKeyButton );
         privateKeyButton.setText( "Browse" );
         FormData privateKeyButtonForm = new FormData();
-        privateKeyButtonForm.top = new FormAttachment( privateKeyInfo, margin );
-        privateKeyButtonForm.left = new FormAttachment( middle, 0 );
+        privateKeyButtonForm.top = new FormAttachment( serviceEmail, margin );
+        privateKeyButtonForm.right = new FormAttachment( 100, 0 );
         privateKeyButton.setLayoutData( privateKeyButtonForm );
+        
+        pkcsFilename = new TextVar(transMeta, serviceAccountComposite, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
+        props.setLook(pkcsFilename);
+        FormData fdPkcsFilename = new FormData();
+        fdPkcsFilename.top = new FormAttachment(serviceEmail, margin);
+        fdPkcsFilename.left = new FormAttachment(middle, 0);
+        fdPkcsFilename.right = new FormAttachment(privateKeyButton, 0);
+        pkcsFilename.setLayoutData(fdPkcsFilename);
+        
+        privateKeyInfo = new Label( serviceAccountComposite, SWT.LEFT );
+        props.setLook( privateKeyInfo );
+        FormData privateKeyInfoData = new FormData();
+        privateKeyInfoData.top = new FormAttachment( pkcsFilename, margin );
+        privateKeyInfoData.left = new FormAttachment( middle, 0 );
+        privateKeyInfoData.right = new FormAttachment( 100, 0 );
+        privateKeyInfo.setLayoutData( privateKeyInfoData );
 
         // test service - Button
         Button testServiceAccountButton = new Button( serviceAccountComposite, SWT.PUSH | SWT.CENTER );
@@ -230,7 +242,7 @@ public class GoogleSpreadsheetOutputDialog extends BaseStepDialog implements Ste
         spreadsheetKeyButton.setLayoutData( spreadsheetKeyButtonData );
 
         // spreadsheetKey - Text
-        spreadsheetKey = new Text( spreadsheetComposite, SWT.SINGLE | SWT.LEFT | SWT.BORDER );
+        spreadsheetKey = new TextVar(transMeta, spreadsheetComposite, SWT.SINGLE | SWT.LEFT | SWT.BORDER );
         props.setLook( spreadsheetKey );
         spreadsheetKey.addModifyListener( modifiedListener );
         FormData spreadsheetKeyData = new FormData();
@@ -259,7 +271,7 @@ public class GoogleSpreadsheetOutputDialog extends BaseStepDialog implements Ste
         worksheetIdButton.setLayoutData( worksheetIdButtonData );
 
         // worksheetId - Text
-        worksheetId = new Text( spreadsheetComposite, SWT.SINGLE | SWT.LEFT | SWT.BORDER );
+        worksheetId = new TextVar(transMeta, spreadsheetComposite, SWT.SINGLE | SWT.LEFT | SWT.BORDER );
         props.setLook( worksheetId );
         worksheetId.addModifyListener( modifiedListener );
         FormData worksheetIdData = new FormData();
@@ -364,8 +376,11 @@ public class GoogleSpreadsheetOutputDialog extends BaseStepDialog implements Ste
                         pks.load( new FileInputStream( keyfile ), GoogleSpreadsheet.SECRET );
                         PrivateKey pk = (PrivateKey) pks.getKey( "privatekey", GoogleSpreadsheet.SECRET );
                         if ( pk != null ) {
-                            privateKeyStore = pks;
-                            privateKeyInfo.setText( "Client ID: " + getPrivateKeyClientID( privateKeyStore ) );
+                        	privateKeyStore = pks;
+                            String clientId = getPrivateKeyClientID(privateKeyStore);
+                            privateKeyInfo.setText("Client ID: " + clientId);
+                            serviceEmail.setText(GoogleSpreadsheet.getGoogleServiceAccount(clientId));
+                            pkcsFilename.setText(filename);
                             meta.setChanged();
                         } else {
                             throw new Exception();
@@ -385,6 +400,12 @@ public class GoogleSpreadsheetOutputDialog extends BaseStepDialog implements Ste
             public void widgetSelected( SelectionEvent e ) {
                 try {
                     testServiceAccountInfo.setText("");
+                    
+                    if (serviceEmail.getText().startsWith("$") || pkcsFilename.getText().startsWith("$")) {
+                		testServiceAccountInfo.setText(BaseMessages.getString(PKG, "Cannot test using variables"));
+                		return;
+                	}
+                    
                     String token = GoogleSpreadsheet.getAccessToken(serviceEmail.getText(), privateKeyStore);
                     if (token == null || token.equals("")) {
                         testServiceAccountInfo.setText("Connection Failed");
@@ -514,6 +535,7 @@ public class GoogleSpreadsheetOutputDialog extends BaseStepDialog implements Ste
         this.serviceEmail.setText( meta.getServiceEmail() );
         this.spreadsheetKey.setText( meta.getSpreadsheetKey() );
         this.worksheetId.setText( meta.getWorksheetId() );
+        this.pkcsFilename.setText( meta.getPkcsFilename() );
 
         this.privateKeyStore = meta.getPrivateKeyStore();
         if ( this.privateKeyStore != null ) {
@@ -528,6 +550,7 @@ public class GoogleSpreadsheetOutputDialog extends BaseStepDialog implements Ste
         meta.setPrivateKeyStore( this.privateKeyStore );
         meta.setSpreadsheetKey( this.spreadsheetKey.getText() );
         meta.setWorksheetId( this.worksheetId.getText() );
+        meta.setPkcsFilename( this.pkcsFilename.getText() );
     }
 
     private void cancel() {
